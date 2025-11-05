@@ -1,0 +1,10 @@
+/* Import Tailwind's base styles, components, and utilities */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can add custom global styles here if needed */
+body {
+  /* This is just a good default to ensure dark mode behavior */
+  @apply bg-gray-900 text-gray-100;
+}
