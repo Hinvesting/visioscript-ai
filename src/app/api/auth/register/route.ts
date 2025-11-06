@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import User from "@/models/User";
-import bcrypt from "bcryptjs";
+import { NextResponse } from 'next/server';
+import dbConnect from '@/lib/db';
+import UserModel from '@/lib/models/user.model';
+import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
@@ -34,10 +34,12 @@ export async function POST(req: Request) {
     }
 
     // Connect to database
-    await connectDB();
+    await dbConnect();
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await UserModel.findOne({
+      email: email.toLowerCase(),
+    });
     if (existingUser) {
       return NextResponse.json(
         { error: "User already exists with this email" },
@@ -46,12 +48,12 @@ export async function POST(req: Request) {
     }
 
     // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create new user
-    const user = await User.create({
+    // Create new user (schema expects `passwordHash`)
+    const user = await UserModel.create({
       email: email.toLowerCase(),
-      password: hashedPassword,
+      passwordHash,
     });
 
     // Return success response (don't send password back!)
