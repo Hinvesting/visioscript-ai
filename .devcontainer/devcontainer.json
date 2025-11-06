@@ -1,0 +1,41 @@
+{
+  // This file configures your GitHub Codespace environment
+  "name": "Next.js VisioScript AI",
+
+  // 1. Tell Codespace which base image to use
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20-bookworm",
+
+  // 2. Forward the Next.js dev port (3000)
+  "forwardPorts": [3000],
+
+  // 3. Define settings for VS Code inside the Codespace
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "github.vscode-github-copilot"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+
+  // 4. Run commands AFTER the Codespace is created
+  "postCreateCommand": "npm install",
+
+  // 5. Run commands AFTER a new file is attached (e.g., pulling a repo)
+  "postAttachCommand": {
+    "server": "npm run dev"
+  },
+
+  // 6. Tell VS Code to open the terminal after it loads
+  "openFiles": [],
+  "postStartCommand": "echo 'Codespace ready. Run npm run dev to start.'",
+
+  // 7. Use 'root' to avoid permission issues
+  "remoteUser": "root"
+}
