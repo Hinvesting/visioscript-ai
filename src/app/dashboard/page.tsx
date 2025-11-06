@@ -3,58 +3,93 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-
-// This is the content from our original app.jsx, now a client component
-// that is protected and uses our auth state.
+import { IProject } from '@/lib/models/project.model'; // Import our Project interface
 
 export default function DashboardPage() {
-  const { user, token, isLoading, logout } = useAuth();
+  const { user, token, isLoading: isAuthLoading, logout } = useAuth();
   const router = useRouter();
 
   // --- App State ---
-  const [prompt, setPrompt] = useState('');
-  const [generatedContent, setGeneratedContent] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [projects, setProjects] = useState<IProject[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
   // --- Protection Effect ---
-  // This effect protects the page
   useEffect(() => {
-    if (!isLoading && !user) {
-      // If loading is done and there's no user, redirect to login
+    if (!isAuthLoading && !user) {
       router.push('/login');
     }
-  }, [isLoading, user, router]);
+  }, [isAuthLoading, user, router]);
 
-  // --- Handle Generation ---
-  // This is where we will call our SECURE API route from Phase 3
-  const handleGenerateClick = async () => {
-    if (!prompt) {
-      setError('Please enter a prompt.');
-      return;
+  // --- Data Fetching Effect ---
+  // This effect runs when the user is authenticated
+  useEffect(() => {
+    if (user && token) {
+      fetchProjects();
     }
+  }, [user, token]); // Re-run if user or token changes
 
-    setIsGenerating(true);
+  const fetchProjects = async () => {
+    setIsLoading(true);
     setError(null);
-    setGeneratedContent('');
+    try {
+      const res = await fetch('/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-    // Simulate API call delay (2 seconds)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!res.ok) {
+        throw new Error('Failed to fetch projects');
+      }
 
-    // Simulated back-end response
-    const mockResponse = `This is the AI-generated content for your prompt: "${prompt}". 
-    
-This request was made by: ${user?.email}
-Subscription Status: ${user?.subscriptionStatus}
-    
-In Phase 3, this will be a real call to /api/generate/process-script.`;
-
-    setGeneratedContent(mockResponse);
-    setIsGenerating(false);
+      const data = await res.json();
+      setProjects(data.projects);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Show a loading spinner while checking auth
-  if (isLoading) {
+  // --- Handle Project Creation ---
+  const handleCreateProject = async () => {
+    // For now, we'll use a simple prompt.
+    // In the future, we'll pop a modal to ask for title/type.
+    const title = prompt("Enter a title for your new project:", "New Project");
+    if (!title) return;
+
+    setError(null);
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title, contentType: 'video-package' }), // Hard-coding type for now
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to create project');
+      }
+
+      // Refresh the project list to show the new one
+      fetchProjects(); 
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+  
+  // --- Handle Project Click ---
+  const handleProjectClick = (projectId: string) => {
+    // This is where we will go to the editor page in the next step
+    // router.push(`/project/${projectId}`);
+    alert(`TODO: Navigate to project editor for ID: ${projectId}`);
+  };
+
+  // Show a loading spinner while checking auth or fetching data
+  if (isAuthLoading || (isLoading && projects.length === 0)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-white text-2xl">Loading...</div>
@@ -70,7 +105,7 @@ In Phase 3, this will be a real call to /api/generate/process-script.`;
   // --- Render The App ---
   return (
     <div className="flex flex-col items-center min-h-screen bg-gray-900 text-gray-100 font-sans p-4 md:p-8">
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-5xl">
         
         {/* Header */}
         <header className="flex justify-between items-center mb-8 md:mb-12">
@@ -88,61 +123,48 @@ In Phase 3, this will be a real call to /api/generate/process-script.`;
           </div>
         </header>
 
-        {/* Content Generation Area (from app.jsx) */}
-        <main className="bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
-          
-          <div className="flex flex-col">
-            <label htmlFor="prompt" className="text-sm font-medium text-gray-300 mb-2">
-              Your Prompt
-            </label>
-            <textarea
-              id="prompt"
-              rows={4}
-              className="w-full p-4 bg-gray-700 rounded-lg border border-gray-600 text-gray-100 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all duration-200"
-              placeholder="e.g., Write a blog post about the future of AI..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              disabled={isGenerating}
-            />
-          </div>
-
-          <div className="mt-6 text-center">
+        {/* Project Area */}
+        <main>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-white">Your Projects</h2>
             <button
-              onClick={handleGenerateClick}
-              disabled={isGenerating}
-              className={`w-full md:w-auto px-8 py-3 rounded-lg font-semibold text-white transition-all duration-300 ease-in-out
-                ${isGenerating 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                }`}
+              onClick={handleCreateProject}
+              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-5 py-2 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transition"
             >
-              {isGenerating ? (
-                <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Generating...
-                </div>
-              ) : 'Generate Content'}
+              + Create New Project
             </button>
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-800 border border-red-700 text-red-100 rounded-lg text-center">
+            <div className="my-4 p-3 bg-red-800 border border-red-700 text-red-100 rounded-lg text-center">
               {error}
             </div>
           )}
 
-          {generatedContent && (
-            <div className="mt-8">
-              <h2 className="text-2xl font-semibold text-gray-200 mb-4">
-                Generated Content
-              </h2>
-              <div className="bg-gray-900 rounded-lg p-6 border border-gray-700 whitespace-pre-wrap text-gray-300">
-                {generatedContent}
-              </div>
+          {/* Project List */}
+          {projects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <div
+                  key={String((project as any)._id)}
+                  onClick={() => handleProjectClick(String((project as any)._id))}
+                  className="bg-gray-800 rounded-lg shadow-lg p-6 cursor-pointer hover:bg-gray-700 transition"
+                >
+                  <h3 className="text-xl font-bold text-white mb-2">{project.title}</h3>
+                  <p className="text-gray-400 text-sm mb-4">Type: {project.contentType}</p>
+                  <p className="text-gray-500 text-xs">
+                    Last updated: {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : ''}
+                  </p>
+                </div>
+              ))}
             </div>
+          ) : (
+            !isLoading && (
+              <div className="text-center text-gray-500 py-16 bg-gray-800 rounded-lg">
+                <h3 className="text-2xl font-semibold">No Projects Yet</h3>
+                <p className="mt-2">Click "Create New Project" to get started!</p>
+              </div>
+            )
           )}
         </main>
       </div>

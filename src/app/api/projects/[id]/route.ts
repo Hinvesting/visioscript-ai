@@ -4,6 +4,35 @@ import { NextResponse } from 'next/server';
 import { verifyJwtAndGetUserId } from '@/lib/auth';
 import { getProjectAndVerifyOwnership } from '@/lib/projects';
 
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const userId = await verifyJwtAndGetUserId(request);
+    if (!userId) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const projectId = params.id;
+    if (!projectId) {
+      return NextResponse.json({ message: 'Project ID is required' }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    const project = await getProjectAndVerifyOwnership(projectId, userId);
+    if (!project) {
+      return NextResponse.json({ message: 'Project not found or forbidden' }, { status: 404 });
+    }
+
+    return NextResponse.json({ project }, { status: 200 });
+  } catch (error: any) {
+    console.error('GET /api/projects/[id] Error:', error);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
