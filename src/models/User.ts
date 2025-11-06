@@ -1,4 +1,4 @@
-import UserModel from '@/lib/models/user.model';
+import UserModel from "@/lib/models/user.model";
 
 /*
   Adapter module to match the import used in routes (`@/models/User`).
